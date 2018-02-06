@@ -116,9 +116,10 @@ class rbm_parser(argparse.ArgumentParser):
 		                         type=int)
 		self.add_argument('--batch', dest='batches', default=100, help='batch size',
 		                         type=int)
-		self.add_argument('--hidden', dest='hidden_size', default=64, help='Number of hiddne nodes',
+		self.add_argument('--hidden', dest='hidden_size', default=64, help='Number of hidden nodes',
 		                         type=int)
-		self.add_argument('--visible', dest='visible_n', default=64, help='Number of visible nodes')
+		self.add_argument('--visible', dest='visible_n', default=64, help='Number of visible nodes',
+		                  type=int)
 
 		self.add_argument('--k', dest='kCD', default=2, help='number of Contrastive Divergence steps',
 		                         type=int)
