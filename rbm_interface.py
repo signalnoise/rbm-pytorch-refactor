@@ -77,7 +77,7 @@ class RBMInterface:
 	def build_model(self, train_loader, optimiser, **kwargs):
 		self.train_loader = train_loader
 
-		if args.enable_cuda:
+		if self.args.enable_cuda:
 			self.rbm = rbm_pytorch.RBM(k=self.args.kCD, n_vis=self.args.visible_n, n_hid=self.args.hidden_size,
 			                           enable_cuda=self.args.enable_cuda).cuda()
 		else:
