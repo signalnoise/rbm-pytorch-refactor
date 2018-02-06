@@ -94,7 +94,7 @@ class RBMInterface:
 		filename = self.args.text_output_dir + "Loss_timeline_"
 
 		for key, value in kwargs.items():
-			filename.append(key + "_" + str(value))
+			filename = filename + key + "_" + str(value) + "_"
 
 		header = "#Epoch \t  Loss mean \t free energy mean \t reconstruction error mean \n"
 
