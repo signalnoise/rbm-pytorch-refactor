@@ -80,9 +80,6 @@ class RBMInterface:
 		self.rbm = rbm_pytorch.RBM(k=self.args.kCD, n_vis=self.args.visible_n, n_hid=self.args.hidden_size,
 		                           enable_cuda=self.args.enable_cuda)
 
-		if self.args.enable_cuda:
-			self.rbm.cuda()
-
 		if self.args.ckpoint is not None:
 			print("Loading saved network state from file", self.args.ckpoint)
 			self.rbm.load_state_dict(torch.load(self.args.ckpoint))
