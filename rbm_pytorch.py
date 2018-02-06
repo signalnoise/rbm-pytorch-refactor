@@ -51,18 +51,26 @@ class CSV_Ising_dataset(Dataset):
 
 
 class RBM(nn.Module):
-    def __init__(self, n_vis=784, n_hid=500, k=5):
+    def __init__(self, n_vis=784, n_hid=500, k=5, enable_cuda=False):
         super(RBM, self).__init__()
         # definition of the constructor
         self.n_vis = n_vis
         self.n_hid = n_hid
-
-        self.W = nn.Parameter(torch.zeros(n_hid, n_vis))
-        #nn.init.uniform(self.W, a=-1, b=1)
-        nn.init.normal(self.W,mean=0, std=0.01)
-        self.v_bias = nn.Parameter(torch.zeros(n_vis))
-        self.h_bias = nn.Parameter(torch.zeros(n_hid))
         self.CDiter = k
+
+        self.enable_cuda = enable_cuda
+
+        if self.enable_cuda:
+            self.W = nn.Parameter(torch.zeros(n_hid, n_vis)).cuda()
+            nn.init.normal(self.W,mean=0, std=0.01)
+            self.v_bias = nn.Parameter(torch.zeros(n_vis)).cuda()
+            self.h_bias = nn.Parameter(torch.zeros(n_hid)).cuda()
+        else:
+            self.W = nn.Parameter(torch.zeros(n_hid, n_vis))
+            nn.init.normal(self.W, mean=0, std=0.01)
+            self.v_bias = nn.Parameter(torch.zeros(n_vis))
+            self.h_bias = nn.Parameter(torch.zeros(n_hid))
+                   
 
     def sample_probability(self, prob, random):
         """Get samples from a tensor of probabilities.
@@ -77,14 +85,24 @@ class RBM(nn.Module):
     def hidden_from_visible(self, visible):
         # Enable or disable neurons depending on probabilities
         probability = torch.sigmoid(F.linear(visible, self.W, self.h_bias))
-        random_field = Variable(torch.rand(probability.size()))
+
+        if self.enable_cuda:
+            random_field = Variable(torch.rand(probability.size()).cuda())
+        else:
+            random_field = Variable(torch.rand(probability.size()))
+
         new_states = self.sample_probability(probability, random_field)
         return new_states, probability
 
     def visible_from_hidden(self, hid):
         # Enable or disable neurons depending on probabilities
         probability = torch.sigmoid(F.linear(hid, self.W.t(), self.v_bias))
-        random_field = Variable(torch.rand(probability.size()))
+
+        if self.enable_cuda:
+            random_field = Variable(torch.rand(probability.size()).cuda())
+        else:
+            random_field = Variable(torch.rand(probability.size()))
+
         new_states = self.sample_probability(probability, random_field)
 
         return new_states, probability
@@ -118,33 +136,6 @@ class RBM(nn.Module):
 
     def loss(self, ref, test):
         return F.mse_loss(test, ref, size_average=True)
-
-    def spin_flip(self, conf, s = 0):
-        #print("s:",s)
-        if (s > self.n_vis):
-            return
-        if (conf[0,s] == 0):
-            conf[0,s] = 1
-            return
-        else:
-            conf[0,s] = 0
-            self.spin_flip(conf, s+1)
-
-    def probabilities(self, Z):
-        field = torch.zeros(1,self.n_vis)
-        # fill with -1s
-        f_conf = open('probrbm', 'w')
-        for conf in xrange(2**self.n_vis-1):
-            F = self.free_energy(Variable(field)).data.numpy()
-            p = exp(-F)/Z
-            f_conf.write(str(conf)+" "+ str(p) + " " + str(Z) + " " + str(F)+"\n")
-            #print(field)
-            self.spin_flip(field) 
-
-        F = self.free_energy(Variable(field)).data.numpy()
-        p = exp(-F)/Z
-        f_conf.write(str(conf+1)+" "+ str(p) + " " + str(Z) + " " + str(F)+"\n")
-        f_conf.close()
 
     def free_energy(self, v):
         # computes log( p(v) )
