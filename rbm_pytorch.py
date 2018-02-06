@@ -69,6 +69,9 @@ class RBM(nn.Module):
         nn.init.normal(self.W, mean=0, std=0.01)
         self.v_bias = nn.Parameter(torch.zeros(n_vis).type(self.dtype))
         self.h_bias = nn.Parameter(torch.zeros(n_hid).type(self.dtype))
+        print(self.W)
+        print(self.h_bias)
+        print(self.v_bias)
 
     def sample_probability(self, prob, random):
         """Get samples from a tensor of probabilities.
