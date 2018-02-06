@@ -128,7 +128,8 @@ class rbm_parser(argparse.ArgumentParser):
 		self.add_argument('--txtout', dest='text_output_dir', default='./',
 		                         help='Directory in which to save text output data',
 		                         type=str)
-		self.add_argument('--enable_cuda', dest='enable_cuda', default=False, help='Specifies if cuda will be used')
+		self.add_argument('--enable_cuda', dest='enable_cuda', default=False, help='Specifies if cuda will be used',
+		                  type=bool)
 
 class CSV_Ising_dataset(Dataset):
     """ Defines a CSV reader """
