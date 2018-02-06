@@ -65,13 +65,6 @@ class RBM(nn.Module):
         self.v_bias = nn.Parameter(torch.zeros(n_vis))
         self.h_bias = nn.Parameter(torch.zeros(n_hid))
 
-        if self.enable_cuda:
-            self.W = self.W.cuda()
-            self.v_bias = self.v_bias.cuda()
-            self.h_bias = self.h_bias.cuda()
-
-
-
     def sample_probability(self, prob, random):
         """Get samples from a tensor of probabilities.
 
