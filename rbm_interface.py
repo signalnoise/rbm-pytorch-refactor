@@ -45,13 +45,13 @@ class RBMInterface:
 			loss_mean = np.mean(loss_)
 			free_energy_mean = np.mean(free_energy_)
 
-		self.progress_bar.set_description("Epoch %3d - Loss %8.5f - RE %5.3g " % (epoch, loss_mean, re_mean))
+			self.progress_bar.set_description("Epoch {:3d} - Loss {:8.5f} - RE {:5.3g} ".format(epoch, loss_mean, re_mean))
 
-		stats = str(epoch) + "\t" + str(loss_mean) + "\t" + str(free_energy_mean) + "\t" + str(re_mean) + "\n"
-		self.loss_file.write(stats)
+			stats = str(epoch) + "\t" + str(loss_mean) + "\t" + str(free_energy_mean) + "\t" + str(re_mean) + "\n"
+			self.loss_file.write(stats)
 
-		if epoch % 10 == 0:
-			torch.save(self.rbm.state_dict(), "trained_rbm.pytorch." + str(epoch))
+			if epoch % 10 == 0:
+				torch.save(self.rbm.state_dict(), "trained_rbm.pytorch." + str(epoch))
 
 		# Save the final model
 		torch.save(self.rbm.state_dict(), "trained_rbm.pytorch." + str(self.args.epochs))
@@ -92,10 +92,12 @@ class RBMInterface:
 	def initialise_output(self, **kwargs):
 		self.progress_bar = tqdm(range(self.args.start_epoch, self.args.epochs))
 
-		filename = self.args.text_output_dir + "Loss_timeline_"
+		filename = self.args.text_output_dir + "Loss_timeline"
 
 		for key, value in kwargs.items():
-			filename = filename + key + "_" + str(value) + "_"
+			filename = filename + "_" + key + "_" + str(value)
+
+		filename = filename + ".data"
 
 		header = "#Epoch \t  Loss mean \t free energy mean \t reconstruction error mean \n"
 
