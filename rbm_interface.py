@@ -36,6 +36,8 @@ class RBMInterface:
 
 			for i, (data, target) in enumerate(self.train_loader):
 
+				data = data.type(self.dtype)
+
 				loss_[i], full_reconstruction_error[i], free_energy_[i] = self.train_step(data)
 
 			re_mean = np.mean(full_reconstruction_error)
