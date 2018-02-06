@@ -60,10 +60,15 @@ class RBM(nn.Module):
 
         self.enable_cuda = enable_cuda
 
-        self.W = nn.Parameter(torch.zeros(n_hid, n_vis))
+        if self.enable_cuda:
+            self.dtype = torch.cuda.FloatTensor
+        else:
+            self.dtype = torch.FloatTensor
+
+        self.W = nn.Parameter(torch.zeros(n_hid, n_vis).type(self.dtype))
         nn.init.normal(self.W, mean=0, std=0.01)
-        self.v_bias = nn.Parameter(torch.zeros(n_vis))
-        self.h_bias = nn.Parameter(torch.zeros(n_hid))
+        self.v_bias = nn.Parameter(torch.zeros(n_vis).type(self.dtype))
+        self.h_bias = nn.Parameter(torch.zeros(n_hid).type(self.dtype))
 
     def sample_probability(self, prob, random):
         """Get samples from a tensor of probabilities.
