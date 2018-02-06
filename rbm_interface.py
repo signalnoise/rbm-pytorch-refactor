@@ -88,11 +88,13 @@ class RBMInterface:
 
 		self.train_op = optimiser(self.rbm.parameters(), **kwargs)
 
-	def initialise_output(self):
+	def initialise_output(self, **kwargs):
 		self.progress_bar = tqdm(range(self.args.start_epoch, self.args.epochs))
 
-		filename = self.args.text_output_dir + "Loss_timeline_lr" + str(self.lr) + "_wd" + str(self.wd) + "_mom"\
-		           + str(self.mom) + ".data"
+		filename = self.args.text_output_dir + "Loss_timeline_"
+
+		for key, value in kwargs.items():
+			filename.append(key + "_" + str(value))
 
 		header = "#Epoch \t  Loss mean \t free energy mean \t reconstruction error mean \n"
 
