@@ -94,7 +94,7 @@ class RBMInterface:
 				torch.save(self.rbm.state_dict(), "trained_rbm.pytorch." + str(epoch))
 
 		# Save the final model
-		torch.save(self.rbm.state_dict(), "trained_rbm.pytorch." + str(self.args.epochs))
+		torch.save(self.rbm.state_dict(), self.args.text_output_dir + "trained_rbm.pytorch." + str(self.args.epochs))
 		self.loss_file.close()
 
 	def train_step(self, data):
