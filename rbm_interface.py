@@ -146,8 +146,6 @@ class RBMInterface:
 			print("Loading saved network state from file", self.args.ckpoint)
 			self.rbm.load_state_dict(torch.load(self.args.ckpoint))
 
-		
-
 	def initialise_output(self, **kwargs):
 		"""Creates internal variables, opens the output file so it can be written to
 		Args:
@@ -207,9 +205,9 @@ class RBMParser(argparse.ArgumentParser):
 		                  type=bool)
 
 class CSV_Ising_dataset(Dataset):
-    """ 
-    Extends Dataset to interpret the output format of magneto.
+    """ Extends Dataset to interpret the output format of magneto.
     """
+
     def __init__(self, csv_file, size=32, transform=None):
         self.csv_file = csv_file
         self.size = size
