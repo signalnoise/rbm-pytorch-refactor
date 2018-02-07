@@ -19,6 +19,17 @@ class RBMInterface:
 	-Pass the DataLoader and your choice of torch.optim optimiser and dictionary of kwargs for that
 	 optimiser into RBMInterface.build_model(DataLoader, torch.optim.*, **kwargs)
 	-Call RBMInterface.train()
+
+	Attributes:
+		loss_file: Reference to the file being used for data output.
+		progress_bar: Reference to the tqdm instance controlling the progress bar.
+		train_loader: DataLoader instance used to feed training data to the nn.
+		train_op: Optimisation algorithm used in training.
+		rbm: Refers to the RBM torch module.
+		parser: Reference to the argument parser which interprets arguments relevant
+			    to the RBM.
+		args: Arguments parsed by the parser
+		dtype: Stores the type of tensor that should be used by the model e.g. CPU or cuda
 	"""
 
 	def __init__(self):

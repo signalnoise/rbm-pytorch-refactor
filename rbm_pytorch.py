@@ -233,12 +233,12 @@ class RBM(nn.Module):
         # Calculates p(H_i | v^(k)) 
         h_prob_negative = torch.sigmoid(F.linear(vk, self.W, self.h_bias))
         
-        # Update the weighta
+        # Update the weights
         training_set_avg = probability.t().mm(target)
+        
         # The minus sign comes from the implementation of the SGD in pytorch 
         # see http://www.cs.toronto.edu/~hinton/absps/momentum.pdf
         # the learning rate has a negative sign in front
-
         self.W.grad = -(training_set_avg - h_prob_negative.t().mm(vk)) / probability.size(0)
 
         # Update the biases
