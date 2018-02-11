@@ -91,10 +91,10 @@ class RBMInterface:
 
 			# Save a state of the RBM every 10 epochs
 			if epoch % 10 == 0:
-				torch.save(self.rbm.state_dict(), "trained_rbm.pytorch." + str(epoch))
+				torch.save(self.rbm.state_dict(),self.args.text_output_dir + "/trained_rbm.pytorch." + str(epoch))
 
 		# Save the final model
-		torch.save(self.rbm.state_dict(), self.args.text_output_dir + "trained_rbm.pytorch." + str(self.args.epochs))
+		torch.save(self.rbm.state_dict(), self.args.text_output_dir + "/trained_rbm.pytorch." + str(self.args.epochs))
 		self.loss_file.close()
 
 	def train_step(self, data):
@@ -154,7 +154,7 @@ class RBMInterface:
 		"""
 		self.progress_bar = tqdm(range(self.args.start_epoch, self.args.epochs))
 
-		filename = self.args.text_output_dir + "Loss_timeline"
+		filename = self.args.text_output_dir + "/Loss_timeline"
 
 		for key, value in kwargs.items():
 			filename = filename + "_" + key + "_" + str(value)
