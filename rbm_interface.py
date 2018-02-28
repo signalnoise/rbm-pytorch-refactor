@@ -4,6 +4,7 @@ from tqdm import *
 from torch.autograd import Variable
 import rbm_pytorch
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 import numpy as np
 
 
@@ -32,7 +33,7 @@ class RBMInterface:
 		dtype: Stores the type of tensor that should be used by the model e.g. CPU or cuda
 	"""
 
-	def __init__(self):
+	def __init__(self, use_validation=False):
 		"""Instantiates the class, loads and interprets arguments.
 		"""
 
@@ -42,8 +43,11 @@ class RBMInterface:
 
 		# These variables pertain to the model itself
 		self.train_loader = None
+		self.validation_set = None
+		self.comparison_set = None
 		self.train_op = None
 		self.rbm = None
+		self.use_validation = use_validation
 
 		# Creates an RBMParser and parses its arguments
 		self.parser = RBMParser()
@@ -64,6 +68,7 @@ class RBMInterface:
 		"""
 
 		iterations_per_epoch = len(self.train_loader)
+		validation_iterations = len(self.validation_set)
 
 		for epoch in self.progress_bar:
 
@@ -71,6 +76,8 @@ class RBMInterface:
 			loss_ = np.zeros(iterations_per_epoch)
 			full_reconstruction_error = np.zeros(iterations_per_epoch)
 			free_energy_ = np.zeros(iterations_per_epoch)
+			validation_free_energy = np.zeros(validation_iterations)
+			comparison_free_energy = np.zeros(validation_iterations)
 
 			for i, (data, target) in enumerate(self.train_loader):
 
@@ -79,6 +86,8 @@ class RBMInterface:
 
 				loss_[i], full_reconstruction_error[i], free_energy_[i] = self.train_step(data)
 
+
+
 			# Average the statistics over the epoch
 			re_mean = np.mean(full_reconstruction_error)
 			loss_mean = np.mean(loss_)
@@ -86,7 +95,25 @@ class RBMInterface:
 
 			# Update the display of the progress bar and write to the output file
 			self.progress_bar.set_description("Epoch {:3d} - Loss {:8.5f} - RE {:5.3g} ".format(epoch, loss_mean, re_mean))
-			stats = str(epoch) + "\t" + str(loss_mean) + "\t" + str(free_energy_mean) + "\t" + str(re_mean) + "\n"
+			stats = str(epoch) + "\t" + str(loss_mean) + "\t" + str(free_energy_mean) + "\t" + str(re_mean)
+			if self.use_validation:
+				
+				for i, (data, target) in enumerate(self.validation_set):
+					data = data.type(self.dtype)
+					v = Variable(data.view(-1, self.args.visible_n))
+					validation_free_energy[i] = self.rbm.free_energy(v).data[0]
+					
+
+				for i, (data, target) in enumerate(self.comparison_set):
+					data = data.type(self.dtype)
+					v = Variable(data.view(-1, self.args.visible_n))
+					comparison_free_energy[i] = self.rbm.free_energy(v).data[0]
+					
+				validation_free_energy_mean = np.mean(validation_free_energy)
+				comparison_free_energy_mean = np.mean(comparison_free_energy)
+				stats = stats + "\t" + str(validation_free_energy_mean) + "\t" + str(comparison_free_energy_mean)
+
+			stats = stats + "\n"
 			self.loss_file.write(stats)
 
 			# Save a state of the RBM every 10 epochs
@@ -126,7 +153,7 @@ class RBMInterface:
 		# Returning .data[0] converts from autograd.Variable to float
 		return loss.data[0], reconstruction_error.data[0], data_free_energy.data[0] 
 
-	def build_model(self, train_loader, optimiser, **kwargs):
+	def build_model(self, batches, training_set, optimiser, validation_set, comparison_set, **kwargs):
 		"""Creates the model, interpreting some of the program arguments.
 		Args:
 			train_loader: An instance of torch.utils.data.DataLoader containing the training data
@@ -134,7 +161,11 @@ class RBMInterface:
 			**kwargs: A dictionary containing the parameters of the optimiser
 		"""
 		# Sets and instantiates internal variables
-		self.train_loader = train_loader
+		self.train_loader = DataLoader(training_set, shuffle=True, batch_size=batches, drop_last=True)
+
+		if self.use_validation and validation_set is not None:
+			self.validation_set = DataLoader(validation_set, shuffle=True, batch_size=batches, drop_last=True)
+			self.comparison_set = DataLoader(comparison_set, shuffle=True, batch_size=batches, drop_last=True)
 
 		self.rbm = rbm_pytorch.RBM(k=self.args.kCD, n_vis=self.args.visible_n, n_hid=self.args.hidden_size,
 		                        	enable_cuda=self.args.enable_cuda)
@@ -161,7 +192,10 @@ class RBMInterface:
 
 		filename = filename + ".data"
 
-		header = "#Epoch \t  Loss mean \t free energy mean \t reconstruction error mean \n"
+		header = "#Epoch \t  Loss mean \t free energy mean \t reconstruction error mean"
+		if self.use_validation:
+			header = header + "\t validation free energy mean \t comparison_free_energy_mean"  
+		header = header + "\n"
 
 		self.loss_file = open(filename, "w", buffering=1)
 		self.loss_file.write(header)
@@ -204,21 +238,41 @@ class RBMParser(argparse.ArgumentParser):
 		self.add_argument('--enable_cuda', dest='enable_cuda', default=False, help='Specifies if cuda will be used',
 		                  type=bool)
 
-class CSV_Ising_dataset(Dataset):
+class ising_dataset(Dataset):
     """ Extends Dataset to interpret the output format of magneto.
     """
 
-    def __init__(self, csv_file, size=32, transform=None):
-        self.csv_file = csv_file
-        self.size = size
-        csvdata = np.loadtxt(csv_file, delimiter=",", skiprows=1, dtype="float64")
-        self.imgs = torch.from_numpy(csvdata.reshape(-1, size))
+    def __init__(self, imgs, transform=None):
+        self.imgs = imgs
         self.datasize, sizesq = self.imgs.shape
         self.transform = transform
-        print("Loaded training set of %d states" % self.datasize)
 
     def __getitem__(self, index):
         return self.imgs[index], index
 
     def __len__(self):
         return len(self.imgs)
+
+class ising_loader:
+	def __init__(self, csv_file, size=32, transform=None, validation_size=0):
+		self.csv_file = csv_file
+		self.size = size
+		csvdata = np.loadtxt(csv_file, delimiter=",", skiprows=1, dtype="float64")
+		csvdata = csvdata.reshape(-1, size)
+
+		np.random.shuffle(csvdata)
+		validation_set, training_set = csvdata[:(validation_size),:], csvdata[(validation_size):,:]
+		comparison_set = training_set[:(validation_size),:]
+
+		self.training_imgs = torch.from_numpy(training_set)
+		self.validation_imgs = torch.from_numpy(validation_set)
+		self.comparison_imgs = torch.from_numpy(comparison_set)
+		self.transform = transform
+
+	def get_datasets(self):
+		training_set = ising_dataset(self.training_imgs, transform = self.transform)
+		print("Loaded training set of %d states" % len(training_set))
+		validation_set = ising_dataset(self.validation_imgs, transform = self.transform)
+		print("Loaded validation set of %d states" % len(validation_set))
+		comparison_set = ising_dataset(self.comparison_imgs, transform = self.transform)
+		return training_set, validation_set, comparison_set
