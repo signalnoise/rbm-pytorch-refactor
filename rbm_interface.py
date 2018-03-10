@@ -274,7 +274,7 @@ class ising_loader:
 	def get_datasets(self):
 		training_set = ising_dataset(self.training_imgs, transform = self.transform)
 		print("Loaded training set of %d states" % len(training_set))
-		if not self.validation_size == 0
+		if not self.validation_size == 0:
 			validation_set = ising_dataset(self.validation_imgs, transform = self.transform)
 			print("Loaded validation set of %d states" % len(validation_set))
 			comparison_set = ising_dataset(self.comparison_imgs, transform = self.transform)
