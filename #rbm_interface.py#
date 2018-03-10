@@ -238,26 +238,34 @@ class RBMParser(argparse.ArgumentParser):
 		self.add_argument('--enable_cuda', dest='enable_cuda', default=False, help='Specifies if cuda will be used',
 		                  type=bool)
 
+<<<<<<< HEAD
 class ising_dataset(Dataset):
     """ Extends Dataset to interpret the output format of magneto.
     """
 
     def __init__(self, imgs, transform=None):
         self.imgs = imgs
+=======
+class CSV_Ising_dataset(Dataset):
+    """ Extends Dataset to interpret the output format of magneto.
+    """
+
+    def __init__(self, csv_file, size=32, transform=None):
+        self.csv_file = csv_file
+        self.size = size
+        csvdata = np.loadtxt(csv_file, delimiter=",", skiprows=1, dtype="float64")
+        self.imgs = torch.from_numpy(csvdata.reshape(-1, size))
+>>>>>>> cc8feb0d3b8d5505a844a77523f396de861293c1
         self.datasize, sizesq = self.imgs.shape
         self.transform = transform
 
     def __getitem__(self, index):
-        return self.imgs[index], index
-
-    def __len__(self):
-        return len(self.imgs)
+        return se
 
 class ising_loader:
 	def __init__(self, csv_file, size=32, transform=None, validation_size=0):
 		self.csv_file = csv_file
 		self.size = size
-		self.validation_size = validation_size
 		csvdata = np.loadtxt(csv_file, delimiter=",", skiprows=1, dtype="float64")
 		csvdata = csvdata.reshape(-1, size)
 
@@ -266,19 +274,14 @@ class ising_loader:
 		comparison_set = training_set[:(validation_size),:]
 
 		self.training_imgs = torch.from_numpy(training_set)
-		if not validation_size == 0:
-			self.validation_imgs = torch.from_numpy(validation_set)
-			self.comparison_imgs = torch.from_numpy(comparison_set)
+		self.validation_imgs = torch.from_numpy(validation_set)
+		self.comparison_imgs = torch.from_numpy(comparison_set)
 		self.transform = transform
 
 	def get_datasets(self):
 		training_set = ising_dataset(self.training_imgs, transform = self.transform)
 		print("Loaded training set of %d states" % len(training_set))
-		if not self.validation_size == 0
-			validation_set = ising_dataset(self.validation_imgs, transform = self.transform)
-			print("Loaded validation set of %d states" % len(validation_set))
-			comparison_set = ising_dataset(self.comparison_imgs, transform = self.transform)
-		else:
-			validation_set = None
-			comparison_set = None
+		validation_set = ising_dataset(self.validation_imgs, transform = self.transform)
+		print("Loaded validation set of %d states" % len(validation_set))
+		comparison_set = ising_dataset(self.comparison_imgs, transform = self.transform)
 		return training_set, validation_set, comparison_set
