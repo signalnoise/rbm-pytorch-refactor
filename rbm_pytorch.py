@@ -244,3 +244,119 @@ class RBM(nn.Module):
         # Update the biases
         self.v_bias.grad = -(target - vk).mean(0)
         self.h_bias.grad = -(probability - h_prob_negative).mean(0)
+
+        with open("grads.txt", "a") as file:
+            file.write("{:f}\n".format(self.W.grad.mean().data.numpy()[0]))
+        with open("weights.txt", "a") as file:
+            file.write("{:f}\n".format(self.W.mean().data.numpy()[0]))
+
+    def annealed_importance_sampling(self, k = 1, betas = 10000, num_chains = 100):
+        """
+        Approximates the partition function for the given model using annealed importance sampling.
+            .. seealso:: Accurate and Conservative Estimates of MRF Log-likelihood using Reverse Annealing \
+               http://arxiv.org/pdf/1412.8566.pdf
+        :param num_chains: Number of AIS runs.
+        :type num_chains: int
+        :param k: Number of Gibbs sampling steps.
+        :type k: int
+        :param betas: Number or a list of inverse temperatures to sample from.
+        :type betas: int, numpy array [num_betas]
+        """
+        
+        # Set betas
+        if np.isscalar(betas):
+            betas = np.linspace(0.0, 1.0, betas)
+        
+        # Start with random distribution beta = 0
+        #hzero = Variable(torch.zeros(num_chains, self.n_hid), volatile= True)
+        #v = self.visible_from_hidden(hzero, beta= betas[0]);
+
+        v = Variable(torch.sign(torch.rand(num_chains,self.n_vis)-0.5), volatile = True)  
+        v = F.relu(v)
+
+        # Calculate the unnormalized probabilties of v
+        # HERE: need another function that does not average across batches....
+        lnpv_sum = -self.free_energy(v, betas[0])  #  denominator
+
+        for beta in betas[1:betas.shape[0] - 1]:
+            # Calculate the unnormalized probabilties of v
+            lnpv_sum += self.free_energy(v, beta)
+
+           # Sample k times from the intermidate distribution
+            for _ in range(0, k):
+                h, ph, v, pv = self.new_state(v, beta)
+
+            # Calculate the unnormalized probabilties of v
+            lnpv_sum -= self.free_energy(v, beta)
+
+        # Calculate the unnormalized probabilties of v
+        lnpv_sum += self.free_energy(v, betas[betas.shape[0] - 1])
+
+        lnpv_sum = np.float128(lnpv_sum.data.numpy())
+        #print("lnpvsum", lnpv_sum)
+
+        # Calculate an estimate of logz . 
+        logz = log_sum_exp(lnpv_sum) - np.log(num_chains)
+
+        # Calculate +/- 3 standard deviations
+        lnpvmean = np.mean(lnpv_sum)
+        lnpvstd = np.log(np.std(np.exp(lnpv_sum - lnpvmean))) + lnpvmean - np.log(num_chains) / 2.0
+        lnpvstd = np.vstack((np.log(3.0) + lnpvstd, logz))
+        #print("lnpvstd", lnpvstd)
+        #print("lnpvmean", lnpvmean)
+        #print("logz", logz)
+
+        # Calculate partition function of base distribution
+        baselogz = self.log_partition_function_infinite_temperature()
+
+        # Add the base partition function
+        logz = logz + baselogz
+        logz_up = log_sum_exp(lnpvstd) + baselogz
+        logz_down = log_diff_exp(lnpvstd) + baselogz
+
+        return logz , logz_up, logz_down
+
+    def log_partition_function_infinite_temperature(self):
+        # computes log ( p(v) ) for random states
+        return (self.n_vis + self.n_hid) * np.log(2.0)
+
+# From PyDeep
+def log_sum_exp(x, axis=0):
+    """ Calculates the logarithm of the sum of e to the power of input 'x'. The method tries to avoid \
+        overflows by using the relationship: log(sum(exp(x))) = alpha + log(sum(exp(x-alpha))).
+    :param x: data.
+    :type x: float or numpy array
+    :param axis: Sums along the given axis.
+    :type axis: int
+    :return: Logarithm of the sum of exp of x.
+    :rtype: float or numpy array.
+    """
+    alpha = x.max(axis) - np.log(np.finfo(np.float64).max) / 2.0
+    if axis == 1:
+        return np.squeeze(alpha + np.log(np.sum(np.exp(x.T - alpha), axis=0)))
+    else:
+        return np.squeeze(alpha + np.log(np.sum(np.exp(x - alpha), axis=0)))
+
+def log_diff_exp(x, axis=0):
+    """ Calculates the logarithm of the diffs of e to the power of input 'x'. The method tries to avoid \
+        overflows by using the relationship: log(diff(exp(x))) = alpha + log(diff(exp(x-alpha))).
+    :param x: data.
+    :type x: float or numpy array
+    :param axis: Diffs along the given axis.
+    :type axis: int
+    :return: Logarithm of the diff of exp of x.
+    :rtype: float or numpy array.
+    """
+    alpha = x.max(axis) - np.log(np.finfo(np.float64).max) / 2.0
+    #print("alpha", alpha)
+    if axis == 1:
+        return np.squeeze(alpha + np.log(np.diff(np.exp(x.T - alpha), n=1, axis=0)))
+    else:
+        #print("x", x)
+        #print("exp:", np.exp(x - alpha))
+        #print("diff:", np.diff(np.exp(x - alpha)))
+        return np.squeeze(alpha + np.log(np.diff(np.exp(x - alpha), n=1, axis=0)))
+'''
+with open("weight.txt", "a") as file:
+file.write("{:f}\t{:f}\t{:f}".format(self.W.mean().data,self.v_bias.mean().data,self.h_bias.mean().data))
+'''

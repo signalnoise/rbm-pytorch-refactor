@@ -116,6 +116,7 @@ class RBMInterface:
 			stats = stats + "\n"
 			self.loss_file.write(stats)
 
+
 			# Save a state of the RBM every 10 epochs
 			if epoch % 10 == 0:
 				torch.save(self.rbm.state_dict(),self.args.text_output_dir + "/trained_rbm.pytorch." + str(epoch).zfill(4))
