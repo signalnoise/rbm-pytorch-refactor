@@ -102,7 +102,7 @@ class RBM(nn.Module):
         return F.relu(torch.sign(prob - random))
 
 
-    def hidden_from_visible(self, visible):
+    def hidden_from_visible(self, visible, beta=1.0):
         """Samples the hidden (latent) variables given the visible.
         
         Args:
@@ -115,7 +115,7 @@ class RBM(nn.Module):
 
         # Calculates the probabilities of each node being equal to one, and generates a
         # tensor containing random numbers between 0 and 1.
-        probability = torch.sigmoid(F.linear(visible, self.W, self.h_bias))
+        probability = beta*torch.sigmoid(F.linear(visible, self.W, self.h_bias))
         random_field = Variable(torch.rand(probability.size()).type(self.dtype))
 
         # Compares the values of the probability and random numbers and returns a tensor
@@ -123,7 +123,7 @@ class RBM(nn.Module):
         new_states = self.sample_probability(probability, random_field)
         return new_states, probability
 
-    def visible_from_hidden(self, hid):
+    def visible_from_hidden(self, hid, beta=1.0):
         """Samples the hidden (latent) variables given the visible.
         
         Args:
@@ -136,7 +136,7 @@ class RBM(nn.Module):
 
         # Calculates the probabilities of each node being equal to one, and generates a
         # tensor containing random numbers between 0 and 1.
-        probability = torch.sigmoid(F.linear(hid, self.W.t(), self.v_bias))
+        probability = beta*torch.sigmoid(F.linear(hid, self.W.t(), self.v_bias))
         random_field = Variable(torch.rand(probability.size()).type(self.dtype))
 
         # Compares the values of the probability and random numbers and returns a tensor
@@ -144,7 +144,7 @@ class RBM(nn.Module):
         new_states = self.sample_probability(probability, random_field)
         return new_states, probability
 
-    def new_state(self, visible, use_prob=False):
+    def new_state(self, visible, use_prob=False, beta = 1.0):
         """Implements one steps of contrastive divergence.
 
         Args:
@@ -156,11 +156,11 @@ class RBM(nn.Module):
             new_visible: Tensor containing binary (1 or 0) states of the visible variables
             probvis: Tensor containing probabilities P(V_i = 1| {H})
         """
-        hidden, probhid = self.hidden_from_visible(visible)
+        hidden, probhid = self.hidden_from_visible(visible, beta)
         if (use_prob):
-            new_visible, probvis = self.visible_from_hidden(probhid)
+            new_visible, probvis = self.visible_from_hidden(probhid, beta)
         else:
-            new_visible, probvis = self.visible_from_hidden(hidden)
+            new_visible, probvis = self.visible_from_hidden(hidden, beta)
 
         return hidden, probhid, new_visible, probvis
 
@@ -216,11 +216,11 @@ class RBM(nn.Module):
 
         # notice that for batches of data the result is still a vector of size num_batches
         if size_average:
-            free_energy = -(hidden_term + vbias_term).mean() # mean along the batches
+            free_energy = (hidden_term + vbias_term).mean() # mean along the batches
         else:
-            free_energy = -(hidden_term + vbias_term)
+            free_energy = (hidden_term + vbias_term)
 
-        return free_energy*beta
+        return -free_energy*beta
 
     def backward(self, target, vk):
         """Backpropagation. Updates the gradients of the parameters according to the contrastive
@@ -253,7 +253,7 @@ class RBM(nn.Module):
         with open("weights.txt", "a") as file:
             file.write("{:f}\n".format(self.W.mean().data.numpy()[0]))
 
-    def annealed_importance_sampling(self, k = 1, betas = 10000, num_chains = 100):
+    def annealed_importance_sampling(self, k = 1, betas = 1000, num_chains = 100):
         """
         Approximates the partition function for the given model using annealed importance sampling.
             .. seealso:: Accurate and Conservative Estimates of MRF Log-likelihood using Reverse Annealing \
@@ -279,21 +279,21 @@ class RBM(nn.Module):
 
         # Calculate the unnormalized probabilties of v
         # HERE: need another function that does not average across batches....
-        lnpv_sum = -self.free_energy(v, betas[0])  #  denominator
+        lnpv_sum = self.free_energy(v, betas[0], size_average=False)  #  denominator
 
         for beta in betas[1:betas.shape[0] - 1]:
             # Calculate the unnormalized probabilties of v
-            lnpv_sum += self.free_energy(v, beta)
+            lnpv_sum -= self.free_energy(v, beta, size_average=False)
 
            # Sample k times from the intermidate distribution
             for _ in range(0, k):
                 h, ph, v, pv = self.new_state(v, beta)
 
             # Calculate the unnormalized probabilties of v
-            lnpv_sum -= self.free_energy(v, beta)
+            lnpv_sum += self.free_energy(v, beta, size_average=False)
 
         # Calculate the unnormalized probabilties of v
-        lnpv_sum += self.free_energy(v, betas[betas.shape[0] - 1])
+        lnpv_sum -= self.free_energy(v, betas[betas.shape[0] - 1], size_average=False)
 
         lnpv_sum = np.float128(lnpv_sum.data.numpy())
         #print("lnpvsum", lnpv_sum)

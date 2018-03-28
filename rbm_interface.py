@@ -71,6 +71,8 @@ class RBMInterface:
 		iterations_per_epoch = len(self.train_loader)
 		validation_iterations = len(self.validation_set)
 
+		n_samples = iterations_per_epoch*self.train_loader.batch_size
+
 		for epoch in self.progress_bar:
 
 			# Define empty arrays to hold training statistics
@@ -86,8 +88,6 @@ class RBMInterface:
 				data = data.type(self.dtype)
 
 				loss_[i], full_reconstruction_error[i], free_energy_[i] = self.train_step(data)
-
-
 
 			# Average the statistics over the epoch
 			re_mean = np.mean(full_reconstruction_error)
@@ -116,16 +116,17 @@ class RBMInterface:
 
 			stats = stats + "\n"
 			self.loss_file.write(stats)
-
+	
 			sum_free_energy = 0
-			for i (data, target) in enumerate(self.train_loader):
-				sum_free_energy = sum_free_energy + self.rbm.free_energy(v).sum()
-			logZ, highZ, lowZ = annealed_importance_sampling()
-			nll = n_samples*logZ + sum_free_energy
-			upper_bound = n_samples*(logZ+highZ) + sum_free_energy
-			lower_bound = n_samples*(logZ+lowZ) + sum_free_energy
+			for i, (data, target) in enumerate(self.train_loader):
+				sum_free_energy = sum_free_energy + self.rbm.free_energy(v, size_average=False).sum().data[0]
+			logZ, highZ, lowZ = self.rbm.annealed_importance_sampling()
+			avg_f_e = sum_free_energy/n_samples
+			nll = logZ + avg_f_e
+			upper_bound = (highZ) + avg_f_e
+			lower_bound = (lowZ) + avg_f_e
 
-			self.nll_file.write("{:d}\t{:f}\t{:f}\t{:f}\n".format(epoch, nll, lower_bound, upper_bound))
+			self.nll_file.write("{:d}\t{:f}\t{:f}\t{:f}\t{:f}\t{:f}\t{:f}\n".format(epoch, nll, lower_bound, upper_bound, logZ, highZ, lowZ))
 
 			# Save a state of the RBM every 10 epochs
 			if epoch % 10 == 0:
