@@ -198,7 +198,7 @@ class RBM(nn.Module):
         """
         return F.mse_loss(test, ref, size_average=True)
 
-    def free_energy(self, v):
+    def free_energy(self, v, beta=1.0, size_average=True):
         """Computes log( p(v) ) as given by eq 2.20 in Asja Fischer's thesis.
 
         Args:
@@ -215,9 +215,12 @@ class RBM(nn.Module):
         hidden_term = wx_b.exp().add(1).log().sum(1)  
 
         # notice that for batches of data the result is still a vector of size num_batches
-        free_energy = -(hidden_term + vbias_term).mean() # mean along the batches
+        if size_average:
+            free_energy = -(hidden_term + vbias_term).mean() # mean along the batches
+        else:
+            free_energy = -(hidden_term + vbias_term)
 
-        return free_energy
+        return free_energy*beta
 
     def backward(self, target, vk):
         """Backpropagation. Updates the gradients of the parameters according to the contrastive
@@ -271,7 +274,7 @@ class RBM(nn.Module):
         #hzero = Variable(torch.zeros(num_chains, self.n_hid), volatile= True)
         #v = self.visible_from_hidden(hzero, beta= betas[0]);
 
-        v = Variable(torch.sign(torch.rand(num_chains,self.n_vis)-0.5), volatile = True)  
+        v = Variable(torch.sign(torch.rand(num_chains,self.n_vis)-0.5), volatile = True).type(self.dtype) 
         v = F.relu(v)
 
         # Calculate the unnormalized probabilties of v

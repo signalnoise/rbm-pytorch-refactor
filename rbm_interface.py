@@ -47,6 +47,7 @@ class RBMInterface:
 		self.comparison_set = None
 		self.train_op = None
 		self.rbm = None
+		self.nll_file = None
 		self.use_validation = use_validation
 
 		# Creates an RBMParser and parses its arguments
@@ -116,6 +117,15 @@ class RBMInterface:
 			stats = stats + "\n"
 			self.loss_file.write(stats)
 
+			sum_free_energy = 0
+			for i (data, target) in enumerate(self.train_loader):
+				sum_free_energy = sum_free_energy + self.rbm.free_energy(v).sum()
+			logZ, highZ, lowZ = annealed_importance_sampling()
+			nll = n_samples*logZ + sum_free_energy
+			upper_bound = n_samples*(logZ+highZ) + sum_free_energy
+			lower_bound = n_samples*(logZ+lowZ) + sum_free_energy
+
+			self.nll_file.write("{:d}\t{:f}\t{:f}\t{:f}\n".format(epoch, nll, lower_bound, upper_bound))
 
 			# Save a state of the RBM every 10 epochs
 			if epoch % 10 == 0:
@@ -187,19 +197,24 @@ class RBMInterface:
 		self.progress_bar = tqdm(range(self.args.start_epoch, self.args.epochs))
 
 		filename = self.args.text_output_dir + "/Loss_timeline"
+		fname2 = self.args.text_output_dir + "/NLL_timeline"
 
 		for key, value in kwargs.items():
 			filename = filename + "_" + key + "_" + str(value)
 
 		filename = filename + ".data"
+		fname2 = fname2 +".data"
 
 		header = "#Epoch \t  Loss mean \t free energy mean \t reconstruction error mean"
 		if self.use_validation:
 			header = header + "\t validation free energy mean \t comparison_free_energy_mean"  
 		header = header + "\n"
+		header2 = "#Epoch \t  NLL \t Lower Bound \t Upper Bound \n"
 
 		self.loss_file = open(filename, "w", buffering=1)
 		self.loss_file.write(header)
+		self.nll_file = open(fname2, "w", buffering=1)
+		self.nll_file.write(header2)
 
 	def get_args(self):
 		"""Returns the arguments parsed by the RBMParser.
