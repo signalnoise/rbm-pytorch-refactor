@@ -248,11 +248,6 @@ class RBM(nn.Module):
         self.v_bias.grad = -(target - vk).mean(0)
         self.h_bias.grad = -(probability - h_prob_negative).mean(0)
 
-        with open("grads.txt", "a") as file:
-            file.write("{:f}\n".format(self.W.grad.mean().data.numpy()[0]))
-        with open("weights.txt", "a") as file:
-            file.write("{:f}\n".format(self.W.mean().data.numpy()[0]))
-
     def annealed_importance_sampling(self, k = 1, betas = 1000, num_chains = 100):
         """
         Approximates the partition function for the given model using annealed importance sampling.
