@@ -290,7 +290,7 @@ class RBM(nn.Module):
         # Calculate the unnormalized probabilties of v
         lnpv_sum -= self.free_energy(v, betas[betas.shape[0] - 1], size_average=False)
 
-        lnpv_sum = np.float128(lnpv_sum.data.numpy())
+        lnpv_sum = np.float128(lnpv_sum.data.cpu().numpy())
         #print("lnpvsum", lnpv_sum)
 
         # Calculate an estimate of logz . 
