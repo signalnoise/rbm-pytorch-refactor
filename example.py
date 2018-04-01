@@ -10,7 +10,7 @@ training_set, validation_set, comparison_set = rbm_interface.ising_loader(args.t
 
 rbm.initialise_output()
 
-rbm.build_model(args.batches, training_set, torch.optim.SGD, validation_set,
-				comparison_set, lr=0.01)
+rbm.build_model(args.batches, training_set, torch.optim.Adadelta, validation_set,
+				comparison_set)#, lr=0.01)
 
 rbm.train()
